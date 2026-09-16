@@ -1,0 +1,31 @@
+MIT License
+
+Copyright (c) 2026 ClinicalCalc Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+MEDICAL & CLINICAL DECISION SUPPORT DISCLAIMER (의료 및 임상 면책 고지)
+-------------------------------------------------------------------------------
+1. 본 소프트웨어는 의학 공식 및 약동학 모델에 기반한 임상 의사결정 보조(Clinical Decision Support) 계산 도구이며,
+   공식적인 의료기기(Medical Device)나 전문 의료인의 진단·처방을 대체하지 않습니다.
+2. 본 소프트웨어에서 제공되는 계산 결과는 참고용으로만 활용되어야 하며, 실제 환자에 대한 모든 임상적 판단,
+   진단, 처방 및 치료 방침은 면허를 보유한 전문 의료인이 환자의 개별 상태와 원시 검사 결과를 종합 검토하여 결정해야 합니다.
+3. 본 소프트웨어의 계산 결과를 활용하여 발생하는 모든 의료적, 법적, 재정적 손해 및 분쟁에 대하여
+   개발자, 기여자 및 저작권자는 어떠한 법적 책임도 지지 않습니다.

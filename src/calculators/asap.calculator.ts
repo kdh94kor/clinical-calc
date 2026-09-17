@@ -38,13 +38,13 @@ export default defineCalculator({
       url: 'https://doi.org/10.1373/clinchem.2019.308965',
     },
   ],
-  limitations: [
-    '만성 B형 간염 환자 코호트에서 개발·검증된 모델이므로 일반 인구 선별용으로 사용해서는 안 됩니다.',
-    '와파린(Warfarin) 등 비타민 K 길항제를 복용 중인 환자는 PIVKA-II가 약제 영향으로 비특이적 급상승하므로 적용할 수 없습니다.',
-    '심한 비타민 K 결핍 환자에게는 적용할 수 없습니다.',
-    '18세 미만 소아·청소년 환자에게는 적용할 수 없습니다.',
-  ],
   legacySource: 'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "ASAP"',
+  limitations: [
+    '원 논문은 B형간염 환자 코호트에서 개발·검증됨. 다른 원인의 간질환에서는 검증되지 않음',
+    'HCC 진단이 아닌 위험 확률이며, 진단은 영상·조직검사 기준을 따라야 함',
+    '와파린 등 비타민K 길항제, 비타민K 결핍, 폐쇄성 황달은 PIVKA-II를 상승시켜 결과를 왜곡함',
+    'AFP·PIVKA-II 검사법(제조사·단위 mAU/mL)이 원 논문과 다르면 계수가 맞지 않을 수 있음',
+  ],
   input: z.object({
     age: adultAgeYears.clone().meta({ example: 55 }),
     sex,

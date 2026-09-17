@@ -1,6 +1,6 @@
 # Clinical Calculator API 사용 가이드
 
-검사 수치·생화학 지표·반코마이신 약동학 계산을 HTTP 요청 한 번으로 받는 서비스입니다.
+검사 수치·생화학 지표·전해질 보정·용량 계산·반코마이신 약동학 등 29종 계산을 HTTP 요청 한 번으로 받는 서비스입니다.
 프로그래밍 언어와 무관하게 JSON을 보내면 JSON으로 결과가 옵니다.
 새로운 항목(검사, 지표 등)은 아 추가해야겠다! 생각이 들면 그때마다 추가할 예정입니다.
 
@@ -387,7 +387,119 @@ curl -X POST http://localhost:3000/api/v1/calculators/EGFR -H "Content-Type: app
 { "age": 55, "sex": "M", "afp": 20, "pivkaII": 40 }   →   { "probability": 0.582, "percent": 58.2, "logit": 0.3318 }
 ```
 
-### 3.7 약동학 (Pharmacokinetics)
+### 3.7 전해질·보정치 (M.OCS.MedCal 이식)
+
+#### `ANION_GAP` 음이온차
+`AG = Na − (Cl + HCO₃)`, 옵션으로 K 포함
+
+| 입력 | 단위 | 필수 | 기본 |
+|---|---|---|---|
+| `sodium`, `chloride`, `bicarbonate` | mEq/L | ● | |
+| `potassium` | mEq/L | includePotassium=true면 ● | |
+| `includePotassium` | true/false | | false |
+| `precision` | | | 1 |
+
+```json
+{ "sodium": 140, "chloride": 104, "bicarbonate": 24 }   →   { "anionGap": 12, "includesPotassium": false }
+```
+
+#### `CORRECTED_CALCIUM` 알부민 보정 칼슘 (Payne)
+`Ca_corr = Ca + 0.8 × (4.0 − Albumin)`
+
+| 입력 | 단위 | 필수 | 기본 |
+|---|---|---|---|
+| `totalCalcium` | mg/dL | ● | |
+| `albumin` | g/dL | ● | |
+| `precision` | | | 1 |
+
+```json
+{ "totalCalcium": 8.0, "albumin": 2.5 }   →   { "correctedCalcium": 9.2 }
+```
+
+#### `CORRECTED_SODIUM` 혈당 보정 나트륨
+`Na_corr = Na + factor × (Glucose − 100) / 100`. **기본 계수는 Katz 1.6**입니다. 예전 의학계산기는 계수 1.0을 썼으므로 예전 값이 필요하면 `"method": "LEGACY_1_0"`을 지정하세요.
+
+| 입력 | 단위 | 필수 | 기본 |
+|---|---|---|---|
+| `sodium` | mEq/L | ● | |
+| `glucose` | mg/dL | ● | 100 미만이면 보정 0 |
+| `method` | `"KATZ"`(1.6) / `"HILLIER"`(2.4) / `"LEGACY_1_0"`(1.0) | | `"KATZ"` |
+| `precision` | | | 1 |
+
+```json
+{ "sodium": 130, "glucose": 600 }   →   { "correctedSodium": 138, "correctionApplied": 8, "method": "KATZ" }
+```
+
+#### `FENA` 나트륨 분획 배설률
+`FeNa % = 100 × (SCr × UNa) / (SNa × UCr)`
+
+| 입력 | 단위 | 필수 | 기본 |
+|---|---|---|---|
+| `serumCreatinine`, `urineCreatinine` | mg/dL | ● | |
+| `serumSodium`, `urineSodium` | mEq/L | ● | |
+| `precision` | | | 2 |
+
+출력: `feNa`, `interpretation`(`prerenal` <1%, `indeterminate`, `intrinsic` >2%). 이뇨제 사용 중이면 해석 불가.
+
+```json
+{ "serumCreatinine": 1.2, "urineSodium": 20, "serumSodium": 140, "urineCreatinine": 80 }   →   { "feNa": 0.21, "interpretation": "prerenal" }
+```
+
+#### `HOMA_IR` 인슐린 저항성
+`HOMA-IR = 공복혈당[mg/dL] × 공복인슐린[µU/mL] / 405`
+
+```json
+{ "fastingGlucose": 100, "fastingInsulin": 10 }   →   { "homaIr": 2.47 }
+```
+
+### 3.8 신체 계측
+
+#### `BMI` 체질량지수
+출력에 대한비만학회(아시아-태평양) 분류 포함: `underweight` <18.5, `normal` <23, `overweight` <25, `obese_1` <30, `obese_2` <35, `obese_3` ≥35
+
+```json
+{ "weightKg": 70, "heightCm": 175 }   →   { "bmi": 22.9, "category": "normal" }
+```
+
+#### `BSA` 체표면적
+기본 Du Bois(예전 의학계산기와 동일), `"method": "MOSTELLER"` 선택 가능
+
+```json
+{ "weightKg": 70, "heightCm": 175 }                        →   { "bsa": 1.85, "method": "DU_BOIS" }
+{ "weightKg": 70, "heightCm": 175, "method": "MOSTELLER" } →   { "bsa": 1.84, "method": "MOSTELLER" }
+```
+
+#### `BMD_LUMBAR_AVERAGE` 요추 골밀도 평균
+L1~L4 중 입력한 분절만 평균합니다(제외 분절은 필드를 생략).
+
+```json
+{ "l1": 0.95, "l3": 1.05, "l4": 1.1 }   →   { "averageBmd": 1.033, "vertebraeUsed": 3 }
+```
+
+### 3.9 용량 계산
+
+#### `WEIGHT_BASED_DOSE` 체중 기반 용량
+`총 용량 = 체중 × 단위체중당 용량`. `doseUnit`: `"mg/kg"`(기본), `"mcg/kg"`, `"unit/kg"`, `"mL/kg"`
+
+```json
+{ "weightKg": 70, "dosePerKg": 15, "doseUnit": "mg/kg" }   →   { "totalDose": 1050, "unit": "mg" }
+```
+
+#### `PEDIATRIC_DOSE_FRACTION` 소아 용량 분율 (Young / Clark)
+`rule`이 `"YOUNG"`이면 `ageYears`(분율 = 나이/(나이+12)), `"CLARK"`이면 `weightKg`(분율 = 체중/70)이 필수. `adultDose`를 주면 소아 용량까지 계산합니다. 약물별 mg/kg 용량이 있으면 그것을 우선하세요.
+
+```json
+{ "rule": "YOUNG", "ageYears": 6, "adultDose": 500 }   →   { "fraction": 0.333, "pediatricDose": 166.667, "rule": "YOUNG" }
+```
+
+#### `INSULIN_PEN_COUNT` 인슐린 펜 처방 개수
+`pens = ceil(1일 단위 × 처방일수 / 펜 1개 단위)`. `penType`: `"U100_3ML"`(300 IU), `"U300_3ML"`(450 IU), `"U200_3ML"`(600 IU), `"U100_1_5ML"`(150 IU)
+
+```json
+{ "dailyUnits": 40, "days": 30, "penType": "U300_3ML" }   →   { "pens": 3, "pensExact": 2.67, "totalUnits": 1200, "unitsPerPen": 450 }
+```
+
+### 3.10 약동학 (Pharmacokinetics)
 
 #### `VANCOMYCIN` 반코마이신 AUC 기반 용량 설계
 환자 정보만 주면 모집단 모델로, 실측 농도가 있으면 환자 고유 약동학으로 CL/Vd를 추정하고 AUC₀₋₂₄ 430~600 목표의 용량·간격을 권장합니다. ClinCalc 계산기와 표시값이 일치하도록 검증되었습니다.
@@ -561,6 +673,12 @@ print(body["data"]["egfr"] if body["success"] else body["error"])
 **eGFR 값이 예전과 다릅니다.**
 기본식이 MDRD에서 CKD-EPI 2021로 바뀌었습니다. `"method": "MDRD_175"`를 주면 예전 값과 같습니다.
 
+**혈당 보정 나트륨 값이 예전 의학계산기와 다릅니다.**
+예전 계산기는 포도당 100 mg/dL당 1.0 mEq/L를 더했는데 표준 문헌 계수는 1.6(Katz)입니다. `"method": "LEGACY_1_0"`을 주면 예전 값과 같습니다.
+
+**Young/Clark, U100/U300 탭이 없습니다.**
+`PEDIATRIC_DOSE_FRACTION`의 `rule`, `INSULIN_PEN_COUNT`의 `penType`으로 통합되었습니다.
+
 **서버 실행은 어떻게 합니까?**
 ```bash
 npm install
@@ -592,5 +710,16 @@ npm start          # 기본 포트 3000, PORT 환경변수로 변경
 | `FIB4` | FIB-4 | age, ast, alt, platelets |
 | `ASAP` | ASAP HCC 점수 | age, sex, afp, pivkaII |
 | `VANCOMYCIN` | 반코마이신 용량 설계 | weightKg, heightCm, sex, age, serumCreatinine |
+| `ANION_GAP` | 음이온차 | sodium, chloride, bicarbonate |
+| `CORRECTED_CALCIUM` | 알부민 보정 칼슘 | totalCalcium, albumin |
+| `CORRECTED_SODIUM` | 혈당 보정 나트륨 | sodium, glucose |
+| `FENA` | 나트륨 분획 배설률 | serumCreatinine, urineSodium, serumSodium, urineCreatinine |
+| `HOMA_IR` | 인슐린 저항성 | fastingGlucose, fastingInsulin |
+| `BMI` | 체질량지수 | weightKg, heightCm |
+| `BSA` | 체표면적 | weightKg, heightCm |
+| `BMD_LUMBAR_AVERAGE` | 요추 골밀도 평균 | l1~l4 중 1개 이상 |
+| `WEIGHT_BASED_DOSE` | 체중 기반 용량 | weightKg, dosePerKg |
+| `PEDIATRIC_DOSE_FRACTION` | 소아 용량 분율 | rule + ageYears 또는 weightKg |
+| `INSULIN_PEN_COUNT` | 인슐린 펜 개수 | dailyUnits, days, penType |
 
 각 계산기의 공식 원문과 의학적 출처(논문·가이드라인)는 `GET /api/v1/calculators/{code}` 또는 Swagger(`/docs`) 설명란에 있습니다.

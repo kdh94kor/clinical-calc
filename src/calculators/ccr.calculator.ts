@@ -16,13 +16,12 @@ export default defineCalculator({
       url: 'https://doi.org/10.1159/000180580',
     },
   ],
-  limitations: [
-    '신기능이 급변하는 급성 신손상(AKI) 환자에게는 크레아티닌 항정상태가 아니므로 사용할 수 없습니다.',
-    '비만 환자(BMI ≥ 30 또는 실제체중 > IBW 120%)의 경우 실제 체중 사용 시 신기능이 크게 과대평가되므로 이상체중(IBW) 또는 보정체중(AjBW)을 고려해야 합니다.',
-    '심한 저체중, 고령 근감소증, 척수손상 환자 등에서는 혈청 Cr이 비정상적으로 낮아 과대평가 위험이 있습니다.',
-    '소아·청소년 환자에게는 적용할 수 없습니다.',
-  ],
   legacySource: 'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "CCR" (체중 = moDTO.GetPatWeight)',
+  limitations: [
+    '실제 체중을 그대로 사용함. 비만·부종 환자는 과대추정될 수 있어 이상체중/보정체중 적용 여부는 임상적으로 판단',
+    '안정된 신기능 전제. 급성 신손상 시 부정확',
+    '원 논문은 성인 남성 중심 코호트에서 도출됨. 소아·고령·근육량 극단에서 신뢰도 저하',
+  ],
   input: z.object({
     age: ageYears.clone().meta({ example: 65 }),
     sex,

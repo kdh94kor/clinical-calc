@@ -19,14 +19,13 @@ export default defineCalculator({
       url: 'https://doi.org/10.1093/clinchem/18.6.499',
     },
   ],
-  limitations: [
-    '중성지방(TG) ≥ 400 mg/dL인 경우 VLDL-C = TG/5 가정이 성립하지 않아 계산할 수 없으며 직접측정법(Direct LDL-C)을 사용해야 합니다.',
-    '제3형 이상지질단백혈증(Type III hyperlipoproteinemia) 환자에게는 적용할 수 없습니다.',
-    '유미지립혈증(Chylomicronemia) 또는 비공복(Non-fasting) 검체의 경우 오차가 큽니다.',
-    'LDL-C 수치가 70 mg/dL 미만인 매우 낮은 구간에서는 직접측정법 대비 과소평가 경향이 있습니다.',
-  ],
   legacySource:
     'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "LDL" (UNRELIABLE_RESULT_LABEL 분기 → calculable=false 로 대체)',
+  limitations: [
+    '공복 검체 전제. 비공복 검체는 TG 상승으로 LDL이 과소추정됨',
+    'TG ≥ 400 mg/dL, III형 고지혈증(dysbetalipoproteinemia), 카일로마이크론혈증에서는 유효하지 않음(계산하지 않음)',
+    'LDL-C < 70 mg/dL 또는 TG 150–400 mg/dL 구간에서는 과소추정 경향. 정밀도가 필요하면 직접측정 LDL 또는 Martin-Hopkins/Sampson 식 고려',
+  ],
   input: z.object({
     totalCholesterol: positive('총콜레스테롤', 'mg/dL', 200),
     hdl: positive('HDL 콜레스테롤', 'mg/dL', 50),

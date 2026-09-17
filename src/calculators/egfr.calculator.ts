@@ -69,14 +69,15 @@ export default defineCalculator({
     { title: 'KDIGO 2024 CKD Guideline — GFR categories G1–G5', url: 'https://kdigo.org/guidelines/ckd-evaluation-and-management/' },
     { title: '대한신장학회 eGFR 계산기 (레거시 검증 링크)', url: 'https://ksn.or.kr/general/about/check.php' },
   ],
-  limitations: [
-    '만 18세 미만 소아·청소년 환자에게는 적용할 수 없습니다 (소아는 Bedside Schwartz 공식 권장).',
-    '신기능이 급변하는 급성 신손상(AKI) 환자에게는 크레아티닌이 정상상태(steady-state)가 아니므로 적용할 수 없습니다.',
-    '근육량이 극단적인 환자(사지 절단, 신경근육 질환, 심한 근감소증, 보디빌더)는 크레아티닌 생성이 비정상적이므로 왜곡될 수 있습니다.',
-    '임산부 및 신대체요법(투석) 중인 환자에게는 적용할 수 없습니다.',
-  ],
   legacySource:
     'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "EGFR","EGFR2" (CALC_TYPE 3→2021, 2→2009, Else→MDRD)',
+  limitations: [
+    '성인(18세 이상) 전용. 소아는 Schwartz 등 별도 공식 필요',
+    '안정 상태(steady state)의 혈청 크레아티닌을 전제함. 급성 신손상·급격한 신기능 변화 시 부정확',
+    '근육량 극단(절단·근육질환·악액질·보디빌더), 임신, 특이 식이(채식·크레아틴 보충), 투석 환자에서 신뢰도 저하',
+    '혈청 크레아티닌은 IDMS 표준화 값이어야 함',
+    'CKD-EPI 2009의 인종 계수는 적용하지 않음',
+  ],
   input: z.object({
     serumCreatinine: positive('혈청 크레아티닌 (IDMS 표준화)', 'mg/dL', 1.0),
     age: adultAgeYears.clone().meta({ example: 50 }),

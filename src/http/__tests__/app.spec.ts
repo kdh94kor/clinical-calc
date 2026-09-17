@@ -7,7 +7,7 @@ describe('HTTP envelope contract', () => {
   it('GET /health', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ success: true, data: { status: 'up', calculators: 18 } });
+    expect(res.body).toMatchObject({ success: true, data: { status: 'up', calculators: 29 } });
   });
 
   it('GET /api/v1/calculators lists every calculator with endpoint', async () => {
@@ -79,7 +79,7 @@ describe('HTTP envelope contract', () => {
     expect(post.requestBody.content['application/json'].schema.properties.serumCreatinine['x-unit']).toBe('mg/dL');
     expect(post.requestBody.content['application/json'].schema.required).not.toContain('method'); // default 있는 필드는 optional
     expect(post.responses['200'].content['application/json'].schema.properties.data.properties.egfr.type).toBe('number');
-    expect(Object.keys(res.body.paths).filter((p) => res.body.paths[p].post)).toHaveLength(18);
+    expect(Object.keys(res.body.paths).filter((p) => res.body.paths[p].post)).toHaveLength(29);
   });
 
   it('GET /docs serves Swagger UI', async () => {

@@ -15,12 +15,12 @@ export default defineCalculator({
       url: 'https://kdigo.org/guidelines/ckd-evaluation-and-management/',
     },
   ],
-  limitations: [
-    '육안적 혈뇨, 요로 감염(UTI), 격렬한 운동, 급성 발열 상태에서는 일시적 단백뇨가 발생하므로 평가에 부적합합니다.',
-    '다발 골수종(Multiple Myeloma) 등 비알부민성 단백뇨(벤스-존스 단백 등)는 통상 시험지봉 검사에서 음성으로 나올 수 있어 주의가 필요합니다.',
-    '기립성 단백뇨 의심 시 아침 첫 소변 검체로 재검해야 합니다.',
-  ],
   legacySource: 'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "PCR" (Math.Floor)',
+  limitations: [
+    '입력 단위는 단백·크레아티닌 모두 mg/dL 로 고정',
+    '단회 소변 비율은 24시간 단백뇨의 추정치이며 근육량 극단·체위·운동 후 검체에서 오차가 커짐',
+    '기본 버림(floor) 처리는 검사실 보고 규정을 따른 것',
+  ],
   input: z.object({
     urineProtein: positive('소변 단백', 'mg/dL', 30),
     urineCreatinine: positive('소변 크레아티닌', 'mg/dL', 120),

@@ -24,13 +24,13 @@ export default defineCalculator({
       note: 'A1 <30, A2 30–300, A3 >300 mg/g',
     },
   ],
-  limitations: [
-    '육안적 혈뇨, 요로 감염(UTI), 급성 열성 질환, 격렬한 운동 직후에는 일시적 알부민뇨가 유발되므로 평가에 부적합합니다.',
-    '월경혈 오염 검체는 해석할 수 없습니다.',
-    '극단적인 근육량 이상(근위축, 절단, 보디빌더) 환자는 요 크레아티닌 배설량 이상으로 비율이 왜곡될 수 있습니다.',
-  ],
   legacySource:
     'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "ACR" (코드 ×100; 주석의 ×1000은 오기)',
+  limitations: [
+    '입력 단위는 알부민 mg/L, 크레아티닌 mg/dL 로 고정. 다른 단위 입력 시 결과가 10배 단위로 틀림',
+    '일회성 상승은 운동·발열·요로감염·월경·심부전 등으로 생길 수 있어, KDIGO는 3개월 내 3회 중 2회 이상 확인을 권고함',
+    '기본 버림(floor) 처리는 검사실 보고 규정을 따른 것이며 통계·연구 목적에는 roundingMode=round 사용',
+  ],
   input: z.object({
     urineMicroalbumin: positive('소변 미세알부민', 'mg/L', 25),
     urineCreatinine: positive('소변 크레아티닌', 'mg/dL', 120),

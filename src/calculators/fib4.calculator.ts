@@ -34,13 +34,13 @@ export default defineCalculator({
       url: 'https://doi.org/10.1097/HEP.0000000000000323',
     },
   ],
-  limitations: [
-    '35세 미만 환자에서는 위양성률이 높아 해석에 주의해야 하며, 소아·청소년에게는 적용할 수 없습니다.',
-    '65세 이상 고령자의 경우 특이도가 낮아지므로 컷오프를 상향(예: <2.0)하여 해석할 필요가 있습니다.',
-    '급성 간염이나 담도 폐쇄 등으로 AST/ALT가 급격히 상승한 급성기에는 적용할 수 없습니다.',
-    '간 외 원인(혈액 질환 등)으로 인한 혈소판 감소증 환자에서는 점수가 비특이적으로 과대평가됩니다.',
-  ],
   legacySource: 'fmLabRstManager.vb › Lab_Result_Auto_Calc_Enter_Event_Common › Case "FIB4"',
+  limitations: [
+    '선별 지표이며 조직검사·영상 탄성도 검사를 대체하지 않음. indeterminate 구간(1.30–2.67)은 추가 검사 필요',
+    '판정 컷오프 1.30/2.67은 NAFLD 성인 기준. 65세 이상은 하한 컷오프 2.0 권고(McPherson 2017), 35세 미만은 위음성 증가',
+    '급성 간염·간외 원인의 AST/ALT 상승, 혈소판 감소를 동반한 혈액질환에서는 해석 불가',
+    '원 논문(Sterling 2006)은 HIV/HCV 동반감염 코호트에서 도출됨',
+  ],
   input: z.object({
     age: adultAgeYears.clone().meta({ example: 60 }),
     ast: positive('AST', 'U/L', 40),

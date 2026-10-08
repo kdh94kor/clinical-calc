@@ -48,7 +48,7 @@ src/
 | 항목 | 레거시 | 서비스 | 이유 |
 |---|---|---|---|
 | eGFR 기본식 | `CALC_TYPE` 미설정 시 MDRD | CKD-EPI 2021 (`method`로 2009·MDRD 선택) | NKF/ASN 2021 권고. 인종 계수는 레거시와 동일하게 미적용 |
-| eGFR 대상 | 레거시 소아 예외(<13세 등) | 18세 미만 검증 거부 | CKD-EPI/MDRD는 성인 전용 |
+| eGFR 대상 | 병원별 소아 예외(EWHA <13) | 18세 미만 검증 거부 | CKD-EPI/MDRD는 성인 전용 |
 | LDL 계산 불가 | 병원별 라벨 문자열(".", "Not calculated") | `{ ldl: null, calculable: false, reason }` | 표시 문구는 클라이언트 책임 |
 | ACR 계수 | 코드 ×100 (주석 ×1000) | ×100, 단위(mg/L ÷ mg/dL) 명시 | 코드가 옳고 주석이 오기 |
 | 24시간 소변 | 항목별 Case 13개 + `DIVIDE_VALUE` | `URINE_24H` 하나, 농도 단위로 계수 결정 | 계수는 단위의 함수 |
@@ -142,7 +142,7 @@ it('Na 140, Glu 100, BUN 14 → 290.6 → 291', () =>
 
 `registry.spec.ts`가 자동으로 새 계산기를 집어서 (a) 코드 형식, (b) 출처 존재, (c) `example`이 스키마를 통과하고 실제 계산되는지,
 (d) 입출력 스키마가 OpenAPI 3.0 JSON Schema로 변환되는지 검사합니다. `registry.spec.ts`의 `EXPECTED` 배열과
-`app.spec.ts`의 계산기 개수(현재 18)만 갱신하면 됩니다.
+`app.spec.ts`의 계산기 개수(현재 29)만 갱신하면 됩니다.
 
 **Step 4 — 확인** `npm run dev` → `http://localhost:3000/docs` 에 새 operation이 공식·출처와 함께 노출됩니다. 끝.
 

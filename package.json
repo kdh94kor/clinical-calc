@@ -1,8 +1,7 @@
 {
   "name": "clinical-calc-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "license": "MIT",
   "description": "임상 검사 수치·약동학 통합 계산 API (Strategy/plugin 기반)",
   "main": "dist/main.js",
   "scripts": {

@@ -3,7 +3,16 @@
  */
 import { CalcError } from '../../core/errors';
 import { registry } from '../../core/registry';
-import { calculateVancomycin, infusionHours, regimen, type VancoInput, type VancoResult } from '../../domain/vancomycin';
+import {
+  calculateVancomycin,
+  infusionHours,
+  recommend,
+  regimen,
+  selectIntervalByCrCl,
+  startDose,
+  type VancoInput,
+  type VancoResult,
+} from '../../domain/vancomycin';
 import { devineIbwKg } from '../../domain/anthropometry';
 
 const base: VancoInput = {
@@ -49,11 +58,11 @@ describe('empiric (population) – 70 kg / 175 cm / M / 40 y / SCr 1.0', () => {
     expect(r.pk.kelPerHr).toBe(0.0807);
     expect(r.pk.halfLifeHr).toBe(8.6);
   });
-  it('권장 용법은 AUC24 430–600, 250 mg 단위, 주입시간 0.5 h 단위', () => {
+  it('권장 용법: CrCl 86 → 밴드 Q8, 1000 mg, AUC 540, Trough 16.7 (AUC 430–600, Trough ≤ 20)', () => {
+    expect(r.recommendation).toMatchObject({ intervalHr: 8, doseMg: 1000, infusionHr: 1, auc24: 540, predictedPeak: 29.3, predictedTrough: 16.7 });
     expect(r.recommendation.auc24).toBeGreaterThanOrEqual(430);
     expect(r.recommendation.auc24).toBeLessThanOrEqual(600);
-    expect(r.recommendation.doseMg % 250).toBe(0);
-    expect([8, 12, 24, 36, 48, 72]).toContain(r.recommendation.intervalHr);
+    expect(r.recommendation.predictedTrough).toBeLessThanOrEqual(20);
     expect(r.recommendation.infusionHr).toBe(infusionHours(r.recommendation.doseMg));
     expect(r.recommendation.loadingDoseMg).toBeNull();
     expect(r.levelFit).toBeNull();
@@ -88,6 +97,46 @@ describe('population model selection', () => {
     expect(calculateVancomycin({ ...base, vdMethod: 'RUSHING_AMBROSE' }).pk.vdL).toBe(37));
 });
 
+describe('recommend() – 2026-10 개정 규칙', () => {
+  it('CrCl 밴드: 86→Q8, 85→Q12, 51→Q12, 50→Q24, 30→Q24, 29→Q36, 21→Q36, 20→Q48', () => {
+    expect([86, 85, 51, 50, 30, 29, 21, 20].map(selectIntervalByCrCl)).toEqual([8, 12, 12, 24, 24, 36, 36, 48]);
+  });
+  it('시작 용량 15 mg/kg, 250 단위, 500–2000 캡', () => {
+    expect(startDose(70)).toBe(1000); // 1050 → 1000
+    expect(startDose(25)).toBe(500); // 375 → 500 하한
+    expect(startDose(200)).toBe(2000); // 3000 → 2000 상한
+  });
+  it('채택 용법은 항상 AUC 430–600 & Trough ≤ 20 (실패 시 Q72 폴백 제외)', () => {
+    // 다양한 kel/Vd/CrCl 격자에서 불변식 검증
+    for (const kel of [0.03, 0.05, 0.08, 0.12]) {
+      for (const vd of [40, 60, 80]) {
+        for (const crcl of [25, 45, 70, 110]) {
+          const rec = recommend(kel, vd, 70, crcl);
+          if (rec.intervalHr === 72 && rec.doseMg === startDose(70)) continue; // 폴백은 불변식 미보장
+          const reg = regimen(rec.doseMg, rec.infusionHr, rec.intervalHr, vd, kel);
+          expect(reg.auc24).toBeGreaterThanOrEqual(430);
+          expect(reg.auc24).toBeLessThanOrEqual(600);
+          expect(reg.trough).toBeLessThanOrEqual(20);
+        }
+      }
+    }
+  });
+  it('후보 순서: 밴드 간격과 반감기 간격 중 짧은 것부터 (CrCl 110=Q8 밴드, t½≈23h → Q24; Q8 실패 시 Q24 전에 Q12를 보지 않음)', () => {
+    // kel 0.03 (t½ 23.1h), Vd 60: Q8은 15mg/kg 1000mg에서 AUC가 600을 훨씬 넘어 1단계 감량으로도 실패 → 다음 후보는 Q24
+    const rec = recommend(0.03, 60, 70, 110);
+    expect(rec.intervalHr).toBe(24);
+  });
+  it('AUC > 600이면 250 mg 1단계만 감량하고, 감량 후 AUC < 530이면 그 간격은 기각', () => {
+    // kel 0.0807 / Vd 69 / 70 kg, Q8: 1000mg AUC 540 (통과). 가상의 더 작은 Vd로 Q8 1000mg AUC>600 → 750mg 검사
+    const reg1000 = regimen(1000, 1, 8, 50, 0.0807);
+    const reg750 = regimen(750, 1, 8, 50, 0.0807);
+    expect(reg1000.auc24).toBeGreaterThan(600);
+    const rec = recommend(0.0807, 50, 70, 86);
+    if (reg750.auc24 >= 530 && reg750.auc24 <= 600 && reg750.trough <= 20) expect(rec).toMatchObject({ intervalHr: 8, doseMg: 750 });
+    else expect(rec.intervalHr).not.toBe(8);
+  });
+});
+
 describe('regimen()', () => {
   it('Peak/Trough/AUC 반올림 체인과 정상상태 공식', () => {
     // kel 0.1, Vd 50 L, 1000 mg / 1 h / Q12
@@ -97,10 +146,11 @@ describe('regimen()', () => {
     expect(reg.trough).toBe(Math.round(reg.peak * Math.exp(-0.1 * 11) * 10) / 10);
     expect(reg.auc24).toBeGreaterThan(0);
   });
-  it('Trough가 0으로 반올림되는 극단(긴 간격·빠른 제거)에서도 AUC가 유한', () => {
+  it('Trough가 0으로 반올림되는 극단(긴 간격·빠른 제거)에서는 로그 사다리꼴 항 0 → AUC = 선형 항만 (유한)', () => {
     const reg = regimen(500, 0.5, 72, 40, 0.5);
     expect(reg.trough).toBe(0);
     expect(Number.isFinite(reg.auc24)).toBe(true);
+    expect(reg.auc24).toBe(Math.round(((reg.peak + 0) / 2) * 0.5 * (24 / 72)));
   });
 });
 

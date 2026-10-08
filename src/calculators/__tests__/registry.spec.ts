@@ -5,10 +5,10 @@ import { defineCalculator } from '../../core/calculator';
 
 describe('CalculatorRegistry (plugin loader)', () => {
   const EXPECTED = [
-    'ACR', 'AGRATIO', 'ANC', 'ANION_GAP', 'ASAP', 'BCRATIO', 'BMD_LUMBAR_AVERAGE', 'BMI', 'BSA',
-    'CARF', 'CCR', 'CORRECTED_CALCIUM', 'CORRECTED_SODIUM', 'CRCL_URINE_24H', 'EGFR', 'FENA',
-    'FIB4', 'GLOB', 'HOMA_IR', 'IDB', 'INSULIN_PEN_COUNT', 'LDL', 'NHDL', 'PCR',
-    'PEDIATRIC_DOSE_FRACTION', 'TSAT', 'URINE_24H', 'VANCOMYCIN', 'WEIGHT_BASED_DOSE',
+    'ACR', 'AGRATIO', 'ANC', 'ANION_GAP', 'ASAP', 'BCRATIO', 'BMD_LUMBAR_AVERAGE', 'BMI', 'BSA', 'CARF', 'CCR',
+    'CORRECTED_CALCIUM', 'CORRECTED_SODIUM', 'CRCL_URINE_24H', 'EGFR', 'FENA', 'FIB4',
+    'GLOB', 'HOMA_IR', 'IDB', 'INSULIN_PEN_COUNT', 'LDL', 'NHDL', 'PCR', 'PEDIATRIC_DOSE_FRACTION', 'TSAT', 'URINE_24H',
+    'VANCOMYCIN', 'WEIGHT_BASED_DOSE',
   ];
 
   it('auto-loads every *.calculator.ts in src/calculators', () => {

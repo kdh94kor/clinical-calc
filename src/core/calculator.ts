@@ -30,10 +30,10 @@ export interface CalculatorDefinition<I extends z.ZodType = z.ZodType, O extends
   /** 사람이 읽는 산출식 (Swagger description에 노출) */
   formula: string;
   references: Reference[];
-  /** 적용 불가 상황 및 임상적 한계 (Swagger 및 GET 메타데이터에 노출) */
-  limitations?: string[];
   /** 마이그레이션 출처 (레거시 파일/함수) */
   legacySource?: string;
+  /** 임상 적용 한계·비적용 대상 (OpenAPI·메타데이터에 노출, 법적 고지의 일부) */
+  limitations?: string[];
   input: I;
   output: O;
   /** Swagger 예시 요청 본문 */

@@ -119,7 +119,7 @@ export default defineCalculator({
     'AUC₀₋₂₄ = [ (Peak+Trough)/2 × tInf + (Peak−Trough)(τ−tInf)/ln(Peak/Trough) ] × 24/τ',
     'Sawchuk-Zaske (2 levels): Kel = ln(C1/C2)/(t2−t1) ; Vd = (Dose/tInf)(1−e^(−Kel·tInf)) / (Kel × (Cmax − Cmin·e^(−Kel·tInf)))',
     'Bayesian (1 level): minimise Σ(Cpred−Cobs)²/2 + (CL−CL₀)²/(2(CV_CL·CL₀)²) + (Vd−V₀)²/(2(CV_Vd·V₀)²)',
-    'Recommendation: 15 mg/kg (250 mg 단위) 시작 → τ ∈ {8,12,24,36,48,72}에서 AUC₀₋₂₄ ≤ 600 첫 간격 → 용량을 AUC 430–600으로 조정. Loading 25 mg/kg (≤ 3000 mg)',
+    'Recommendation (v1.1): 후보 간격 = {CrCl 밴드(>85 Q8 / >50 Q12 / ≥30 Q24 / >20 Q36 / else Q48), 반감기 최근접 간격} 짧은 순 → 나머지 Q8..Q72. 각 간격에서 15 mg/kg(250 mg 단위, 500–2000) 시작: AUC₀₋₂₄ > 600이면 250 mg 1단계 감량 후 530–600 & Trough ≤ 20일 때만 채택, < 430이면 600 이하까지 증량 후 430–600 & Trough ≤ 20일 때 채택. Loading 25 mg/kg (≤ 3000 mg)',
   ].join('\n'),
   references: [
     {

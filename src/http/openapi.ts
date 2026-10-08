@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CalculatorDefinition } from '../core/calculator';
 import type { CalculatorRegistry } from '../core/registry';
+import { DISCLAIMER } from './envelope';
 
 type Json = Record<string, unknown>;
 
@@ -14,13 +15,8 @@ function describe(def: CalculatorDefinition): string {
   const refs = def.references
     .map((r) => `- ${r.title}${r.url ? ` — ${r.url}` : ''}${r.note ? ` (${r.note})` : ''}`)
     .join('\n');
-  const limitations =
-    def.limitations && def.limitations.length > 0
-      ? ['', '**적용 한계 및 주의사항 (Limitations)**', ...def.limitations.map((l) => `- ⚠️ ${l}`)].join('\n')
-      : '';
   return [
     def.summary,
-    limitations,
     '',
     '**Formula**',
     '',
@@ -30,10 +26,11 @@ function describe(def: CalculatorDefinition): string {
     '',
     '**References**',
     refs,
+    def.limitations?.length ? `\n**Limitations / Not validated for**\n${def.limitations.map((l) => `- ${l}`).join('\n')}` : '',
     def.legacySource ? `\n**Legacy source**: \`${def.legacySource}\`` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+    '',
+    `> ${DISCLAIMER}`,
+  ].join('\n');
 }
 
 const successEnvelope = (dataSchema: Json): Json => ({
@@ -44,12 +41,12 @@ const successEnvelope = (dataSchema: Json): Json => ({
     data: dataSchema,
     meta: {
       type: 'object',
-      required: ['apiVersion', 'timestamp', 'disclaimer'],
+      required: ['timestamp', 'apiVersion', 'disclaimer'],
       properties: {
-        apiVersion: { type: 'string', example: '1.0.0' },
         timestamp: { type: 'string', format: 'date-time' },
+        apiVersion: { type: 'string', description: '계산식 버전 식별자 (기록 보존 시 함께 저장)' },
+        disclaimer: { type: 'string', description: '임상 판단 대체 불가 고지문' },
         calculator: { type: 'string' },
-        disclaimer: { type: 'string' },
       },
     },
   },
@@ -113,14 +110,15 @@ export function buildOpenApi(reg: CalculatorRegistry): Json {
       title: 'Clinical Calculator API',
       version: '1.0.0',
       description: [
-        '임상 검사 수치·생화학 지표·약동학 통합 계산 서비스.',
+        '임상 검사 수치·생화학 지표·약동학 통합 계산 서비스. 모든 응답은 `{success, data, meta}` 또는 `{success:false, error}` 봉투(envelope)로 반환됩니다.',
         '',
-        '### ⚠️ 사용 조건 및 법적 면책 고지 (Clinical & Legal Disclaimer)',
-        '> **본 서비스의 계산 결과는 공식 수식에 기반한 참고치이며, 의학적 진단·처방이나 의료진의 임상적 판단을 대체하지 않습니다.**',
-        '> 모든 최종 해석과 치료 결정은 반드시 면허를 가진 의료인이 환자의 전반적인 상태와 원시 검사값을 직접 확인한 후 내려야 합니다.',
-        '> *This service provides formula-based calculations for clinical decision support only and does not constitute medical advice, diagnosis, or treatment.*',
+        '## 사용 조건 및 면책',
+        `> ${DISCLAIMER}`,
         '',
-        '모든 응답은 `{success, data, meta}` 또는 `{success:false, error}` 봉투(envelope)로 반환됩니다.',
+        '- 결과는 입력된 값에만 의존합니다. 검체 오류·단위 오류·입력 오류로 인한 결과에 대해 서비스는 책임지지 않습니다.',
+        '- 각 공식은 발표 논문의 대상 집단(연령·인종·임상 상황)에서 검증된 것이며, 각 operation의 *Limitations* 항목에 명시된 경우에는 적용할 수 없습니다.',
+        '- 이 서비스는 결과를 저장하지 않습니다. 의무기록에 남기는 경우 호출 시점의 응답(`meta.apiVersion` 포함)을 그대로 보존해야 합니다.',
+        '- 공식·계수는 가이드라인 개정에 따라 변경될 수 있으며 `meta.apiVersion`으로 식별합니다.',
       ].join('\n'),
     },
     servers: [{ url: '/' }],

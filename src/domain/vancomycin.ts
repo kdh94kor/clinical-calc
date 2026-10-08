@@ -134,40 +134,83 @@ export function infusionHours(doseMg: number): number {
 export function regimen(doseMg: number, tInfHr: number, tauHr: number, vdL: number, kel: number): Regimen {
   const peakExact = (doseMg * (1 - Math.exp(-kel * tInfHr))) / (tInfHr * vdL * kel * (1 - Math.exp(-kel * tauHr)));
   const peak = r(peakExact, 1);
-  const troughExact = peak * Math.exp(-kel * (tauHr - tInfHr));
-  const trough = r(troughExact, 1);
-  // 반올림 trough가 0이면 ln(peak/0)로 발산 → 비반올림 값으로 대체 (VB 원본의 미해결 결함 보정)
-  const tr = trough > 0 ? trough : Math.max(troughExact, 1e-9);
-  const linTrap = ((tr + peak) / 2) * tInfHr;
-  const logTrap = ((peak - tr) * (tauHr - tInfHr)) / Math.log(peak / tr);
+  const trough = r(peak * Math.exp(-kel * (tauHr - tInfHr)), 1);
+  const linTrap = ((peak + trough) / 2) * tInfHr;
+  // 반올림 trough가 0이거나 peak ≤ trough면 로그 사다리꼴 항은 0 (VB 원본 2026-10 수정과 동일)
+  const logTrap = trough > 0 && peak > trough ? ((peak - trough) * (tauHr - tInfHr)) / Math.log(peak / trough) : 0;
   return { peak, trough, auc24: r((linTrap + logTrap) * (24 / tauHr)) };
 }
 
-function initialDose(tbwKg: number, minMg: number): number {
-  return Math.max(minMg, Math.min(r((tbwKg * 15) / 250) * 250, 2000));
+/** 시작 용량: 15 mg/kg, 250 mg 반올림, 500–2000 mg */
+export function startDose(tbwKg: number): number {
+  return Math.max(500, Math.min(r((tbwKg * 15) / 250) * 250, 2000));
 }
 
-/** 권장 간격: 15 mg/kg(250 반올림) 용량으로 Q8→Q72 순회, AUC24 ≤ 600이 되는 첫 간격 */
-export function selectInterval(kel: number, vdL: number, tbwKg: number): number {
-  const dose = initialDose(tbwKg, 500);
-  for (const tau of TAU_LIST) {
-    if (regimen(dose, infusionHours(dose), tau, vdL, kel).auc24 <= 600) return tau;
-  }
-  return TAU_LIST[TAU_LIST.length - 1] as number;
+/** CrCl 밴드 간격 (후보 1): >85 Q8 / >50 Q12 / ≥30 Q24 / >20 Q36 / 그 외 Q48 */
+export function selectIntervalByCrCl(crCl: number): number {
+  const c = r(crCl);
+  if (c > 85) return 8;
+  if (c > 50) return 12;
+  if (c >= 30) return 24;
+  if (c > 20) return 36;
+  return 48;
 }
 
-/** 권장 용량: 15 mg/kg 시작, AUC24 > 600 → −250 / < 430 → +250 (250–2000 mg). 하한 430은 ClinCalc 실측 역산값 */
-export function recommendDose(kel: number, vdL: number, tbwKg: number, tauHr: number) {
-  let dose = initialDose(tbwKg, 250);
-  for (let i = 0; i < 20; i++) {
-    const tInf = infusionHours(dose);
-    const reg = regimen(dose, tInf, tauHr, vdL, kel);
-    if (reg.auc24 > 600 && dose > 250) dose -= 250;
-    else if (reg.auc24 < 430 && dose < 2000) dose += 250;
-    else return { doseMg: dose, infusionHr: tInf, auc24: reg.auc24 };
+export interface Recommendation {
+  intervalHr: number;
+  doseMg: number;
+  infusionHr: number;
+  auc24: number;
+}
+
+/**
+ * 한 간격에서 용량 탐색. 15 mg/kg 시작:
+ *  - AUC24 > 600 → 250 mg 한 단계만 감량, 감량 후 530 ≤ AUC ≤ 600 & Trough ≤ 20 일 때만 채택
+ *  - AUC24 < 430 → 600 이하가 될 때까지 250 mg 증량(≤2000), 최종 430–600 & Trough ≤ 20 일 때 채택
+ * (하한 530: ClinCalc 실측 526 기각/549 채택, Trough 20: 565/20.4 기각)
+ */
+function tryRegimen(kel: number, vdL: number, tbwKg: number, tauHr: number): Recommendation | null {
+  let dose = startDose(tbwKg);
+  let reg = regimen(dose, infusionHours(dose), tauHr, vdL, kel);
+
+  if (reg.auc24 > 600) {
+    if (dose <= 500) return null;
+    dose -= 250;
+    reg = regimen(dose, infusionHours(dose), tauHr, vdL, kel);
+    if (reg.auc24 < 530 || reg.auc24 > 600 || reg.trough > 20) return null;
+  } else {
+    while (reg.auc24 < 430 && dose < 2000) {
+      dose += 250;
+      reg = regimen(dose, infusionHours(dose), tauHr, vdL, kel);
+    }
+    if (reg.auc24 < 430 || reg.auc24 > 600 || reg.trough > 20) return null;
   }
+  return { intervalHr: tauHr, doseMg: dose, infusionHr: infusionHours(dose), auc24: reg.auc24 };
+}
+
+/**
+ * 권장 용법 (ClinCalc 실측 17케이스 역산, 2026-10 개정):
+ * 후보 간격 = {CrCl 밴드 간격, 반감기 최근접 간격}을 짧은 순으로, 이어서 Q8→Q72 나머지. 첫 번째로 tryRegimen을 통과하는 간격 채택.
+ * 전부 실패하면 Q72 + 시작 용량.
+ */
+export function recommend(kel: number, vdL: number, tbwKg: number, crClConv: number): Recommendation {
+  const tBand = selectIntervalByCrCl(crClConv);
+  const halfLife = Math.LN2 / kel;
+  const tHalf = TAU_LIST.reduce((best, tau) => (Math.abs(tau - halfLife) < Math.abs(best - halfLife) ? tau : best), TAU_LIST[0] as number);
+
+  const candidates: number[] = [Math.min(tBand, tHalf)];
+  if (tBand !== tHalf) candidates.push(Math.max(tBand, tHalf));
+  for (const tau of TAU_LIST) if (!candidates.includes(tau)) candidates.push(tau);
+
+  for (const tau of candidates) {
+    const rec = tryRegimen(kel, vdL, tbwKg, tau);
+    if (rec) return rec;
+  }
+
+  const tau = TAU_LIST[TAU_LIST.length - 1] as number;
+  const dose = startDose(tbwKg);
   const tInf = infusionHours(dose);
-  return { doseMg: dose, infusionHr: tInf, auc24: regimen(dose, tInf, tauHr, vdL, kel).auc24 };
+  return { intervalHr: tau, doseMg: dose, infusionHr: tInf, auc24: regimen(dose, tInf, tau, vdL, kel).auc24 };
 }
 
 /**
@@ -186,7 +229,8 @@ export function compareOptions(vdL: number, kel: number, selTau: number, selDose
       if (r(mgKg) < 8) continue;
       const reg = regimen(dose, infusionHours(dose), tau, vdL, kel);
       if (reg.auc24 < (selGroup ? 285 : 200)) continue;
-      if (idx === 1 && !selGroup && reg.auc24 > 900) break;
+      // 중간 위치 그룹 상한 AUC 900 (실측 917 제외/861 포함 = 600×1.5). 2026-10: 선택 그룹에도 적용
+      if (idx === 1 && reg.auc24 > 900) break;
       const aucMic = r(reg.auc24 / mic);
       rows.push({
         frequency: `Q${tau}hr`,
@@ -411,8 +455,8 @@ export function calculateVancomycin(p: VancoInput): VancoResult {
   const kelExact = pk.kelExact > 0 ? pk.kelExact : kel;
   const mic = p.mic > 0 ? p.mic : 1;
 
-  const tau = selectInterval(kelExact, pk.vdL, p.weightKg);
-  const rec = recommendDose(kelExact, pk.vdL, p.weightKg, tau);
+  const rec = recommend(kelExact, pk.vdL, p.weightKg, crclConv);
+  const tau = rec.intervalHr;
   const reg = regimen(rec.doseMg, rec.infusionHr, tau, pk.vdL, kel);
 
   const warnings: string[] = [];

@@ -17,28 +17,36 @@ describe('HTTP envelope contract', () => {
     expect(res.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'FIB4', endpoint: '/api/v1/calculators/FIB4' })]));
   });
 
-  it('GET /api/v1/calculators/:code returns formula, references, limitations, JSON schemas', async () => {
+  it('GET /api/v1/calculators/:code returns formula, references, JSON schemas', async () => {
     const res = await request(app).get('/api/v1/calculators/egfr');
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ code: 'EGFR' });
     expect(res.body.data.formula).toContain('142');
     expect(res.body.data.references.length).toBeGreaterThan(0);
-    expect(Array.isArray(res.body.data.limitations)).toBe(true);
-    expect(res.body.data.limitations.length).toBeGreaterThan(0);
     expect(res.body.data.inputSchema.properties.serumCreatinine).toMatchObject({ type: 'number', 'x-unit': 'mg/dL' });
   });
 
   it('POST success → { success:true, data, meta.calculator }', async () => {
     const res = await request(app).post('/api/v1/calculators/glob').send({ totalProtein: 7.2, albumin: 4.3 });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      success: true,
-      data: { globulin: 2.9 },
-      meta: { calculator: 'GLOB', apiVersion: '1.0.0' },
-    });
+    expect(res.body).toMatchObject({ success: true, data: { globulin: 2.9 }, meta: { calculator: 'GLOB' } });
     expect(typeof res.body.meta.timestamp).toBe('string');
-    expect(typeof res.body.meta.disclaimer).toBe('string');
-    expect(res.body.meta.disclaimer).toContain('임상 판단·처방을 대체하지 않습니다');
+  });
+
+  it('every success response carries apiVersion and the clinical disclaimer', async () => {
+    const res = await request(app).post('/api/v1/calculators/glob').send({ totalProtein: 7.2, albumin: 4.3 });
+    expect(res.body.meta.apiVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(res.body.meta.disclaimer).toContain('임상 판단');
+    expect(res.body.meta.disclaimer).toContain('clinical decision support only');
+  });
+
+  it('metadata and OpenAPI expose limitations and disclaimer', async () => {
+    const meta = await request(app).get('/api/v1/calculators/VANCOMYCIN');
+    expect(meta.body.data.limitations.length).toBeGreaterThan(3);
+    expect(meta.body.data.limitations.join(' ')).toContain('투석');
+    const doc = await request(app).get('/openapi.json');
+    expect(doc.body.info.description).toContain('면책');
+    expect(doc.body.paths['/api/v1/calculators/VANCOMYCIN'].post.description).toContain('**Limitations');
   });
 
   it('POST validation failure → 400 VALIDATION_ERROR with details', async () => {
@@ -74,7 +82,6 @@ describe('HTTP envelope contract', () => {
     const post = res.body.paths['/api/v1/calculators/EGFR'].post;
     expect(post.description).toContain('**Formula**');
     expect(post.description).toContain('**References**');
-    expect(post.description).toContain('적용 한계');
     expect(post.description).toContain('NEJMoa2102953');
     expect(post.requestBody.content['application/json'].schema.properties.serumCreatinine['x-unit']).toBe('mg/dL');
     expect(post.requestBody.content['application/json'].schema.required).not.toContain('method'); // default 있는 필드는 optional
